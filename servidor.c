@@ -18,6 +18,17 @@
 /*
  * El servidor ofrece el servicio de un chat
  */
+typedef struct {
+    char palo[10];
+    int numero;
+} Carta;
+
+typedef struct {
+    int id;
+    char username[50];
+    Carta cartas[2]; 
+    int puntos;
+} Jugador;
 
 void manejador(int signum);
 void salirCliente(int socket, fd_set * readfds, int * numClientes, int arrayClientes[]);
