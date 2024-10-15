@@ -46,8 +46,13 @@ typedef struct {
 
 // Acciones de la baraja
 
+/*El algoritmo funciona de tal manera que se asocian 13 cartas
+a cada uno de los correspondientes palos*/
+
 void cargarBaraja(int baraja[]);
 void barajarCartas(int baraja[]);
 void emparejarValCartas();
+
+int calcularPuntos(int mano[], int numCartas);
 
 #endif
