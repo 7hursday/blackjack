@@ -9,20 +9,6 @@
 
 // Estructuras necesarias para el juego
 
-/*typedef struct {
-    char palo[10]; // tipo de carta en una cadena de caracteres
-    int valor; // número de la carta
-} Carta;
-
-// Estructura alternativa
-typedef enum {Picas, Diamantes, Corazones, Treboles} Palo;
-
-typedef struct {
-    Palo palo;
-    int valor; // número de la carta
-} Carta; 
-*/
-
 typedef struct {
     int carta[11];
     int manoCartas; // cantidad de cartas por mano
@@ -51,8 +37,11 @@ a cada uno de los correspondientes palos*/
 
 void cargarBaraja(int baraja[]);
 void barajarCartas(int baraja[]);
-void emparejarValCartas();
+const char *obtenerPalo(int carta);
+int obtenerValor(int carta);
+void repartirCarta(int baraja[], int *cartaActual, ManoJugador *mano);
+void imprimirMano(ManoJugador *mano);
 
-int calcularPuntos(int mano[], int numCartas);
+int calcularPuntuacion(ManoJugador *mano);
 
 #endif
