@@ -1,89 +1,142 @@
 #include "funciones.h"
 
-// Acciones de la baraja
+// 2. FUNCIONES DE GESTIÓN DE LA BARAJA
+// nota: los ases no se distinguen hasta la hora de contabilizar los puntos
 
-void cargarBaraja(int baraja[])
+void inicializarBaraja(Partida *partida)
 {
-    for (int i = 0; i < 52; i++)
+    for (int palo = 0; palo < 4; palo++)
     {
-        baraja[i] = i; 
+        for (int valor = 0; valor < 13; valor++)
+        {
+            partida -> baraja[palo][valor] = 1;  // hay carta
+        }
+        partida -> cartasPorPalo[palo] = 13;  // todos los palos tienen 13 cartas
     }
+    partida -> cartaActual = 0;
 }
 
-void barajarCartas(int baraja[])
+void barajarBaraja(Partida *partida)
 {
-    srand(time(NULL)); 
+    int barajaAux[MAX_CARTAS_BARAJA];
+    int contador = 0;
 
-    for (int i = 51; i > 0; i--)
-    {  
+    for (int palo = 0; palo < 4; palo++)
+    {
+        for (int valor = 0; valor < 13; valor++)
+        {
+            if (partida -> baraja[palo][valor] == 1)
+            {
+                barajaAux[contador++] = palo * 13 + valor; // se incrementa el contador por cada carta nueva que entre
+            }
+        }
+    }
+
+    // algoritmo de remezcla
+    srand(time(NULL));
+    for (int i = contador - 1; i > 0; i--)
+    {
         int j = rand() % (i + 1);
-        int aux = baraja[i];
-        baraja[i] = baraja[j];
-        baraja[j] = aux;
+        int aux = barajaAux[i];
+        barajaAux[i] = barajaAux[j];
+        barajaAux[j] = aux;
     }
-}
 
-const char *obtenerPalo(int carta)
-{
-    const char *palos[] = {"Picas", "Diamantes", "Corazones", "Tréboles"};
-    return palos[carta / 13];
-}
-
-int obtenerValor(int carta)
-{
-    int valor = (carta % 13) + 1; 
-    return (valor > 10) ? 10 : valor;
-}
-
-void repartirCarta(int baraja[], int *cartaActual, ManoJugador *mano)
-{
-    if (*cartaActual >= 52)
+    // limpio y reseteo
+    for (int palo = 0; palo < 4; palo++)
     {
-        printf("No quedan más cartas en la baraja.\n");
-        return;
+        for (int valor = 0; valor < 13; valor++)
+        {
+            partida -> baraja[palo][valor] = 0;
+        }
     }
 
-    int carta = baraja[*cartaActual];  // siguiente carta disponible
-    mano->carta[mano->manoCartas++] = carta;  // añade la carta a la mano
-    mano->puntuacion += obtenerValor(carta);  // suma el valor a la puntuación
-    (*cartaActual)++; 
+    // reinserto la baraja remezclada
+    for (int i = 0; i < MAX_CARTAS_BARAJA; i++)
+    {
+        int palo = barajaAux[i] / 13;
+        int valor = barajaAux[i] % 13;
+        partida -> baraja[palo][valor] = 1; // hay carta
+    }
+
+    partida->cartaActual = 0;
 }
 
-void imprimirMano(ManoJugador *mano)
+int sacarCarta(Partida *partida)
 {
-    printf("Mano actual: ");
-    for (int i = 0; i < mano->manoCartas; i++)
+    int palo, valor;
+
+    if (partida -> cartaActual >= MAX_CARTAS_BARAJA)
     {
-        int carta = mano->carta[i];
-        printf("[%s, %d] ", obtenerPalo(carta), obtenerValor(carta));
+        return -1;  // no hay mas cartas
     }
-    printf("\nPuntuación: %d\n", mano->puntuacion);
+
+    do {
+        palo = rand() % 4;   
+        valor = rand() % 13; 
+    } while (partida -> baraja[palo][valor] == 0);  // selecciona otra carta si no esta disponible
+
+    partida -> baraja[palo][valor] = 0;  // indica que la carta ya ha sido usada
+    partida -> cartasPorPalo[palo]--;    // se reduce la cantidad de cartas en el palo
+    partida -> cartaActual++;            // mas una partida
+    
+    return valor;
+}
+
+void reiniciarBaraja(Partida *partida)
+{
+    inicializarBaraja(partida);  
+    partida -> cartaActual = 0;    // reinicia el contador
+}
+
+int todasCartasJugadas(Partida *partida)
+{
+    return partida -> cartaActual >= MAX_CARTAS_BARAJA;
 }
 
 int calcularPuntuacion(ManoJugador *mano)
 {
-    int total = 0;
-    int ases = 0;
+    int puntuacion, ases = 0;
 
-    for (int i = 0; i < mano->manoCartas; i++)
+    for (int i = 0; i < mano -> cartasPorMano; i++)
     {
-        int valor = obtenerValor(mano->carta[i]);
-
-        if (valor == 1)
+        if (mano -> carta[i] >= 10)
         {
-            ases++;  
-            total += 11;  // consideramos el As como 11
+            puntuacion += 10; // para J, Q, K
+            
+        } else if (mano -> carta[i] == 0) {
+
+            puntuacion += 11; // los ases valen 11 ahora mismo
+            ases++;
+
         } else {
-            total += valor;
+
+            puntuacion += mano -> carta[i] + 2; // resto de cartas
         }
     }
 
-    while (total > 21 && ases > 0)
+    while (puntuacion > 21 && ases > 0) // sobrepasamos max puntos
     {
-        total -= 10;  // cambiamos un As de 11 a 1
+        puntuacion -= 10; // los ases valen 1
         ases--;
     }
 
-    return total;
+    mano -> puntuacion = puntuacion;
+    return puntuacion;
 }
 
+// 3.   FUNCIONES DE GESTIÓN DEL JUGADOR
+
+void agregarCartaMano(ManoJugador *mano, int carta)
+{
+    if (mano -> cartasPorMano < MAX_CARTAS_MANO)
+    {
+        mano -> carta[mano -> cartasPorMano++] = carta;
+    }
+}
+
+void resetearMano(ManoJugador *mano)
+{
+    mano -> cartasPorMano = 0; 
+    mano -> puntuacion = 0; 
+}
