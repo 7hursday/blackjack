@@ -1,267 +1,171 @@
-#include "funciones.h"
+#include "blackjack.h"
 
-// 2. FUNCIONES DE GESTIÓN DE LA BARAJA
-// Nota: los ases no se distinguen hasta la hora de contabilizar los puntos
-
-void inicializarBaraja(Partida *partida)
+void inicializarBaraja(Carta baraja[MAX_CARTAS_BARAJA])
 {
+    const char *palos[] = {"Corazones", "Picas", "Tréboles", "Diamantes"};
+    int i = 0;
+
     for (int palo = 0; palo < 4; palo++)
     {
-        for (int valor = 0; valor < 13; valor++)
+        for (int valor = 1; valor <= 13; valor++)
         {
-            partida->baraja[palo][valor] = 1;  // hay carta
+            baraja[i].valor = (valor > 10) ? 10 : valor; // figuras valen 10
+            strcpy(baraja[i].palo, palos[palo]);
+            // nombres a las cartas
+            if (valor == 1) {
+                strcpy(baraja[i].nombreCarta, "As");
+            } else if (valor == 11) {
+                strcpy(baraja[i].nombreCarta, "J");
+            } else if (valor == 12) {
+                strcpy(baraja[i].nombreCarta, "Q");
+            } else if (valor == 13) {
+                strcpy(baraja[i].nombreCarta, "K");
+            } else {
+                sprintf(baraja[i].nombreCarta, "%d", valor); // nombres numéricos
+            }
+            i++;
         }
-        partida->cartasPorPalo[palo] = 13;  // todos los palos tienen 13 cartas
     }
-    partida->cartaActual = 0;
 }
 
-void barajarBaraja(Partida *partida)
+void barajarBaraja(Carta baraja[MAX_CARTAS_BARAJA])
 {
-    int barajaAux[MAX_CARTAS_BARAJA];
-    int contador = 0;
-
-    for (int palo = 0; palo < 4; palo++)
-    {
-        for (int valor = 0; valor < 13; valor++)
-        {
-            if (partida->baraja[palo][valor] == 1)
-            {
-                barajaAux[contador++] = palo * 13 + valor; // se incrementa el contador por cada carta nueva que entra
-            }
-        }
-    }
-
-    // Algoritmo de remezcla
     srand(time(NULL));
-    for (int i = contador - 1; i > 0; i--)
-    {
-        int j = rand() % (i + 1);
-        int aux = barajaAux[i];
-        barajaAux[i] = barajaAux[j];
-        barajaAux[j] = aux;
-    }
 
-    // Limpio y reseteo
-    for (int palo = 0; palo < 4; palo++)
-    {
-        for (int valor = 0; valor < 13; valor++)
-        {
-            partida->baraja[palo][valor] = 0; // Se resetea la baraja
-        }
-    }
-
-    // Reinserto la baraja remezclada
     for (int i = 0; i < MAX_CARTAS_BARAJA; i++)
     {
-        int palo = barajaAux[i] / 13;
-        int valor = barajaAux[i] % 13;
-        partida->baraja[palo][valor] = 1; // Hay carta
+        int j = rand() % MAX_CARTAS_BARAJA; // aleatorio
+        Carta aux = baraja[i];
+        baraja[i] = baraja[j];
+        baraja[j] = aux;
     }
-
-    partida->cartaActual = 0;
 }
 
-int sacarCarta(Partida *partida)
-{
-    int palo, valor;
 
-    if (partida->cartaActual >= MAX_CARTAS_BARAJA)
+void robarCarta(Partida *partida, Jugador *jugador)
+{
+    if (partida->cartaActual < MAX_CARTAS_BARAJA)
     {
-        return -1;  // No hay más cartas
+        Carta cartaRobada = partida->baraja[partida->cartaActual];
+        partida->cartaActual++;
+
+        // añadir a la mano del jugador
+        if (jugador->mano.cartasPorMano < MAX_CARTAS_MANO)
+        {
+            jugador->mano.cartas[jugador->mano.cartasPorMano] = cartaRobada;
+            jugador->mano.cartasPorMano++;
+            calcularPuntuacion(jugador); // puntuación del jugador
+        } else {
+            printf("El jugador ya tiene el máximo de cartas en mano.\n");
+        }
+    } else {
+        printf("No quedan cartas en la baraja para robar.\n");
+    }
+}
+
+
+void mostrarMano(Jugador *jugador)
+{
+    printf("Mano de %s:\n", jugador->nombre);
+    for (int i = 0; i < jugador->mano.cartasPorMano; i++)
+    {
+        printf("%s de %s\n", jugador->mano.cartas[i].nombreCarta, jugador->mano.cartas[i].palo);
+    }
+    printf("Puntuación actual: %d\n", jugador->mano.puntuacion);
+}
+
+
+void calcularPuntuacion(Jugador *jugador)
+{
+    int puntuacion = 0;
+    int numeroases = 0; // Contador para Ases
+
+    for (int i = 0; i < jugador->mano.cartasPorMano; i++)
+    {
+        puntuacion += jugador->mano.cartas[i].valor;
+
+        // Contar cuántos Ases hay
+        if (strcmp(jugador->mano.cartas[i].nombreCarta, "As") == 0)
+        {
+            numeroases++;
+        }
     }
 
-    do {
-        palo = rand() % 4;   
-        valor = rand() % 13; 
-    } while (partida->baraja[palo][valor] == 0);  // Selecciona otra carta si no está disponible
+    while (puntuacion > 21 && numeroases > 0)
+    {
+        puntuacion -= 10; // contar el as como 1 en vez de 11
+        numeroases--;
+    }
 
-    partida->baraja[palo][valor] = 0;  // Indica que la carta ya ha sido usada
-    partida->cartasPorPalo[palo]--;    // Se reduce la cantidad de cartas en el palo
-    partida->cartaActual++;             // Se incrementa el contador de cartas sacadas
+    jugador->mano.puntuacion = puntuacion; // actualizar la puntuación del jugador
+}
+
+
+void jugarTurno(Partida *partida, Jugador *jugador)
+{
+    char opcion;
+    mostrarMano(jugador);
+
+    // preguntar al jugador si quiere pedir carta o plantarse
+    printf("¿Deseas pedir otra carta (p) o plantarte (s)? ");
+    scanf(" %c", &opcion);
+
+    while (opcion == 'pedir' || opcion == 'plantarte')
+    {
+        robarCarta(partida, jugador);
+        calcularPuntuacion(jugador);
+        mostrarMano(jugador);
+
+        // si el jugador ha perdido
+        if (jugador->mano.puntuacion > 21)
+        {
+            printf("¡Te has pasado de 21! Has perdido.\n");
+            return;
+        }
+        printf("¿Deseas pedir otra carta o plantarte? ");
+        scanf(" %c", &opcion);
+    }
+    printf("%s se ha plantado con una puntuación de %d.\n", jugador->nombre, jugador->mano.puntuacion);
+}
+
+void jugarPartida(Partida *partida)
+{
+    inicializarBaraja(partida->baraja);
+    barajarBaraja(partida->baraja);
     
-    return palo * 13 + valor;           // Retorna el valor de la carta sacada
-}
-
-void reiniciarBaraja(Partida *partida)
-{
-    inicializarBaraja(partida);  
-    partida->cartaActual = 0;    // Reinicia el contador de cartas
-}
-
-int todasCartasJugadas(Partida *partida)
-{
-    return partida->cartaActual >= MAX_CARTAS_BARAJA; // Verifica si todas las cartas han sido jugadas
-}
-
-int calcularPuntuacion(ManoJugador *mano)
-{
-    int puntuacion = 0, ases = 0; // Inicializa puntuación y contador de ases
-
-    for (int i = 0; i < mano->cartasPorMano; i++)
+    // dar dos cartas de inicio a los jugadores
+    for (int i = 0; i < 2; i++)
     {
-        if (mano->carta[i] >= 10)
-        {
-            puntuacion += 10; // Para J, Q, K
-        } 
-        else if (mano->carta[i] == 0)
-        {
-            puntuacion += 11; // Los ases valen 11 por defecto
-            ases++;
-        } 
-        else 
-        {
-            puntuacion += mano->carta[i] + 2; // Resto de cartas
-        }
+        robarCarta(partida, &partida->jugador1);
+        robarCarta(partida, &partida->jugador2);
     }
 
-    while (puntuacion > 21 && ases > 0) // Verifica si la puntuación sobrepasa 21
+    // jugador 1
+    printf("Turno de %s:\n", partida->jugador1.nombre);
+    jugarTurno(partida, &partida->jugador1);
+
+    // si 1 no pierde paso a 2
+    if (partida->jugador1.mano.puntuacion <= 21)
     {
-        puntuacion -= 10; // Convierte un as de 11 a 1
-        ases--;
-    }
-
-    mano->puntuacion = puntuacion; // Asigna la puntuación calculada a la mano
-    return puntuacion;
-}
-
-// 3.   FUNCIONES DE GESTIÓN DEL JUGADOR
-
-void agregarCartaMano(ManoJugador *mano, int carta)
-{
-    if (mano->cartasPorMano < MAX_CARTAS_MANO)
-    {
-        mano->carta[mano->cartasPorMano++] = carta; // Añade carta a la mano del jugador
-    }
-}
-
-void resetearMano(ManoJugador *mano)
-{
-    mano->cartasPorMano = 0;  // Resetea la cantidad de cartas en mano
-    mano->puntuacion = 0;      // Resetea la puntuación
-}
-
-// 4. FUNCIONES DE GESTIÓN DE LA PARTIDA
-
-void registrarJugador(const char *nombre, const char *contrasena)
-{
-    // Abrir el archivo en modo de añadir
-    FILE *file = fopen("jugadores.txt", "a+");
-    if (!file) {
-        perror("Error al abrir el archivo de jugadores");
-        return; // Salir si no se puede abrir el archivo
-    }
-
-    char buffer[MSG_SIZE]; // Para almacenar nombres de jugadores existentes
-    int usuarioExistente = 0; // Bandera para verificar si el usuario ya existe
-
-    // Leer el archivo para comprobar si el nombre ya está registrado
-    while (fgets(buffer, sizeof(buffer), file)) {
-        char nombreArchivo[MSG_SIZE];
-        if (sscanf(buffer, "%s", nombreArchivo) == 1) {
-            if (strcmp(nombreArchivo, nombre) == 0) {
-                usuarioExistente = 1; // Usuario ya existe
-                break; // Salir del bucle si se encuentra el usuario
-            }
+        printf("Cambio de turno:\n");
+        while (partida->jugador2.mano.puntuacion < 17) {
+            robarCarta(partida, &partida->jugador2);
+            calcularPuntuacion(&partida->jugador2);
         }
-    }
+        mostrarMano(&partida->jugador2);
 
-    // Si el usuario ya existe, informamos al usuario
-    if (usuarioExistente) {
-        printf("Error: El nombre de usuario '%s' ya está registrado.\n", nombre);
-    } else {
-        // Si el nombre no existe, lo agregamos al archivo
-        fprintf(file, "%s %s\n", nombre, contrasena); // Guardar el nuevo usuario
-        printf("Registro exitoso: Usuario '%s' registrado correctamente.\n", nombre);
-    }
-
-    fclose(file); // Cerrar el archivo
-}
-
-void iniciarSesion(Jugador *jugador, const char *nombre, const char *contrasena)
-{
-    FILE *file = fopen("jugadores.txt", "r"); // Abrir el archivo de jugadores
-    if (!file) {
-        perror("Error al abrir el archivo de jugadores");
-        jugador->sesionIniciada = 0; // Asegúrate de que la sesión no esté iniciada
-        jugador->estaConectado = 0;  // Asegúrate de que el jugador no esté conectado
-        return;
-    }
-
-    char buffer[MSG_SIZE * 2]; // Para almacenar el nombre y contraseña
-    int credencialesValidas = 0; // Bandera para verificar credenciales
-
-    // Leer cada línea del archivo y verificar las credenciales
-    while (fgets(buffer, sizeof(buffer), file)) {
-        char nombreArchivo[MSG_SIZE], contrasenaArchivo[MSG_SIZE];
-        // Separa el nombre y la contraseña usando un delimitador (puede ser un espacio, coma, etc.)
-        if (sscanf(buffer, "%s %s", nombreArchivo, contrasenaArchivo) == 2) {
-            if (strcmp(nombreArchivo, nombre) == 0 && strcmp(contrasenaArchivo, contrasena) == 0) {
-                credencialesValidas = 1; // Credenciales válidas
-                break; // Salir del bucle si se encuentran credenciales válidas
-            }
-        }
-    }
-
-    fclose(file); // Cerrar el archivo después de la lectura
-
-    if (credencialesValidas) {
-        strncpy(jugador->nombre, nombre, MSG_SIZE);  // Asigna el nombre al jugador
-        strncpy(jugador->contrasena, contrasena, MSG_SIZE); // Asigna la contraseña
-        jugador->sesionIniciada = 1;                  // Marca la sesión como iniciada
-        jugador->estaConectado = 1;                   // Marca al jugador como conectado
-        printf("Sesión iniciada correctamente para %s.\n", jugador->nombre);
-    } else {
-        printf("Error: Nombre de usuario o contraseña incorrectos.\n");
-        jugador->sesionIniciada = 0;                  // Asegúrate de que la sesión no esté iniciada
-        jugador->estaConectado = 0;                   // Asegúrate de que el jugador no esté conectado
-    }
-}
-
-void cambiarTurno(Partida *partida)
-{
-    // Cambia el turno entre los jugadores
-    if (partida->jugador1.sesionIniciada && partida->jugador2.sesionIniciada) {
-        if (partida->jugador1.estaConectado) {
-            partida->jugador1.estaConectado = 0;
-            partida->jugador2.estaConectado = 1; // Cambia el turno al jugador 2
+        // comparo puntuaciones y determinar el ganador
+        if (partida->jugador2.mano.puntuacion > 21) {
+            printf("¡Se ha pasado de 21! %s gana.\n", partida->jugador1.nombre);
         } else {
-            partida->jugador1.estaConectado = 1; // Cambia el turno al jugador 1
-            partida->jugador2.estaConectado = 0;
-        }
-    }
-}
-
-void procesarTurno(Partida *partida)
-{
-    Jugador *jugadorActual = partida->jugador1.estaConectado ? &partida->jugador1 : &partida->jugador2;
-
-    if (jugadorActual->sesionIniciada) {
-        printf("Turno de %s\n", jugadorActual->nombre);
-        char accion[10];
-        printf("¿Deseas 'pedir' carta o 'plantar'? ");
-        scanf("%s", accion);
-
-        if (strcmp(accion, "pedir") == 0) {
-            int carta = sacarCarta(partida);
-            if (carta != -1) {
-                agregarCartaMano(&jugadorActual->mano, carta);
-                printf("%s ha sacado la carta: %d\n", jugadorActual->nombre, carta);
-                calcularPuntuacion(&jugadorActual->mano);
-                if (jugadorActual->mano.puntuacion > 21) {
-                    printf("%s se ha pasado de 21. Ha perdido su turno.\n", jugadorActual->nombre);
-                    resetearMano(&jugadorActual->mano);
-                }
+            if (partida->jugador1.mano.puntuacion > partida->jugador2.mano.puntuacion) {
+                printf("%s gana con %d contra %d.\n", partida->jugador1.nombre, partida->jugador1.mano.puntuacion, partida->jugador2.mano.puntuacion);
+            } else if (partida->jugador1.mano.puntuacion < partida->jugador2.mano.puntuacion) {
+                printf("Gana con %d contra %d de %s.\n", partida->jugador2.mano.puntuacion, partida->jugador1.mano.puntuacion, partida->jugador1.nombre);
             } else {
-                printf("No quedan cartas en la baraja.\n");
+                printf("¡Es un empate! Ambos tienen %d.\n", partida->jugador1.mano.puntuacion);
             }
-        } else if (strcmp(accion, "plantar") == 0) {
-            printf("%s se planta. Su puntuación es: %d\n", jugadorActual->nombre, jugadorActual->mano.puntuacion);
-        } else {
-            printf("Acción no válida. Debes elegir 'pedir' o 'plantar'.\n");
         }
-    } else {
-        printf("El jugador %s no está en sesión.\n", jugadorActual->nombre);
     }
 }
 
