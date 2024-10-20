@@ -1,5 +1,5 @@
-#ifndef BJSERVERFUNCIONES_H
-#define BJSERVERFUNCIONES_H
+#ifndef BLACKJACK_H
+#define BLACKJACK_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,45 +10,46 @@
 #define MAX_CARTAS_MANO 11
 #define MAX_CARTAS_BARAJA 52
 
-// 1.   ESTRUCTURAS DE JUEGO
+// ESTRUCTURAS PARA JUGAR
+
 typedef struct {
-    int carta[MAX_CARTAS_MANO];     // cartas que posee el jugador (max 11)
-    int cartasPorMano;              // cuántas cartas tiene en mano
-    int puntuacion;                 // puntuación actual del jugador
+    int valor;             // Valor de la carta (1-10, con figuras valiendo 10 y As siendo 1 u 11).
+    char palo[10];        // "Corazones", "Picas", "Tréboles", "Diamantes".
+    char nombreCarta[20]; // Suficiente para contener el valor numérico.
+} Carta;
+
+typedef struct {
+    Carta cartas[MAX_CARTAS_MANO];   // Máximo 11 cartas por mano.
+    int cartasPorMano;                // Cantidad actual de cartas en mano.
+    int puntuacion;                   // Puntuación actual del jugador.
 } ManoJugador;
 
 typedef struct {
-    char nombre[MSG_SIZE];          // nombre del usuario
-    char contrasena[MSG_SIZE];      // contraseña del usuario
-    ManoJugador mano;               // cartas del jugador y su puntuación
-    int sesionIniciada;             // indica si el jugador ha iniciado sesión
-    int estaConectado;              // indica si el jugador está conectado
+    char nombre[MSG_SIZE];            // Nombre del usuario.
+    char contrasena[MSG_SIZE];        // Contraseña del usuario.
+    ManoJugador mano;                 // Mano del jugador y su puntuación.
+    int sesionIniciada;               // Indica si el jugador inició sesión.
+    int estaConectado;                // Indica si el jugador está conectado al juego.
 } Jugador;
 
 typedef struct {
-    int baraja[4][13];              // 4 palos y 13 cartas (2 a 10, J, Q, K, A)
-    int cartasPorPalo[4];           // cantidad de cartas por palo
-    int cartaActual;                 // siguiente carta a sacar
-    Jugador jugador1;                // jugador 1            
-    Jugador jugador2;                // jugador 2            
+    Carta baraja[MAX_CARTAS_BARAJA];  // Mazo completo de cartas.
+    int cartaActual;                   // Índice de la siguiente carta a sacar del mazo.
+    Jugador jugador1;                  // Jugador 1.
+    Jugador jugador2;                  // Jugador 2 (dealer o rival).
 } Partida;
 
-// 2.   FUNCIONES DE GESTIÓN DE LA BARAJA
-void inicializarBaraja(Partida *partida);
-void barajarBaraja(Partida *partida);
-int sacarCarta(Partida *partida);
-void reiniciarBaraja(Partida *partida);
-int todasCartasJugadas(Partida *partida);
-int calcularPuntuacion(ManoJugador *mano);
+// FUNCIONES DE GESTIÓN DE LA BARAJA
+void inicializarBaraja(Carta baraja[MAX_CARTAS_BARAJA]);
+void barajarBaraja(Carta baraja[MAX_CARTAS_BARAJA]);
+void robarCarta(Partida *partida, Jugador *jugador);
 
-// 3.   FUNCIONES DE GESTIÓN DEL JUGADOR
-void agregarCartaMano(ManoJugador *mano, int carta);
-void resetearMano(ManoJugador *mano);
+// FUNCIONES DE GESTIÓN DEL JUGADOR
+void mostrarMano(Jugador *jugador);
+void calcularPuntuacion(Jugador *jugador);
 
-// 4.   FUNCIONES DE GESTIÓN DE LA PARTIDA
-void registrarJugador(const char *nombre, const char *contrasena);
-void iniciarSesion(Jugador *jugador, const char *nombre, const char *contrasena);
-void cambiarTurno(Partida *partida); // cambia el turno entre jugadores
-void procesarTurno(Partida *partida); // procesa el turno del jugador actual
+// FUNCIONES DE GESTIÓN DE LA PARTIDA
+void jugarTurno(Partida *partida, Jugador *jugador);
+void jugarPartida(Partida *partida);
 
 #endif
