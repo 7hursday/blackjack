@@ -1,4 +1,4 @@
-#include "blackjack.h"
+#include "bjServerFunciones.h"
 
 void inicializarBaraja(Carta baraja[MAX_CARTAS_BARAJA])
 {
