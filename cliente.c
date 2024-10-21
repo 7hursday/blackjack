@@ -56,14 +56,19 @@ int main(){
     FD_SET(0, &readfds); // 0 --> sd_cliente
     FD_SET(sd_cliente, &readfds);
 
-    printf("Opciones del servidor:\n");
-    printf("\tUSUARIO usuario\n");
-    printf("\tPASSWORD contraseña\n");
-    printf("\tREGISTRO -u usuario -p password\n");
-    printf("\tINICIAR-PARTIDA\n");
-    printf("\tPEDIR-CARTA\n");
-    printf("\tPLANTARME\n");
-    printf("\tSALIR\n");
+printf("=====================================\n");
+printf("        OPCIONES DEL SERVIDOR        \n");
+printf("=====================================\n");
+printf("  1. USUARIO usuario\n");
+printf("  2. PASSWORD contraseña\n");
+printf("-------------------------------------\n");
+printf("  COMANDOS DISPONIBLES:\n");
+printf("    * REGISTRO -u usuario -p password\n");
+printf("    * INICIAR-PARTIDA\n");
+printf("    * PEDIR-CARTA\n");
+printf("    * PLANTARME\n");
+printf("    * SALIR\n");
+printf("=====================================\n");
     
 	/* ------------------------------------------------------------------
 		Se transmite la información
